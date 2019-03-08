@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#coding：utf-8
+#coding: utf-8
 
 import os
 from pymongo import MongoClient
@@ -22,6 +22,12 @@ from email import encoders
 from email.mime.application import MIMEApplication
 
 import datetime
+import time
+import os
+
+import sys
+
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 mongodb_url = 'mongodb://root:example@127.0.0.1:27017/admin?authSource=admin'
 table_name = 'credit_inquiry'
@@ -36,16 +42,16 @@ sender = 'do-not-reply@alphacar.io'
 password = ''
 receivers = []
 
+params = dict()
+
 cur_dir = os.path.abspath(os.path.dirname(__file__))
-cur_date = datetime.datetime.now()
-print('cur_date:', cur_date.strftime('%Y_%m_%d'))
 
 file_name = 'report.xlsx'
 output_file = os.path.abspath(os.path.join(cur_dir, file_name))
 
 def loadConfig(configYaml):
     import yaml 
-    global mail_host, mail_port, sender, password, receivers
+    global mode, mongodb_url, mail_host, mail_port, sender, password, receivers, params
     f = open(configYaml, encoding='utf-8')
     res = yaml.load(f)
     f.close()
@@ -64,6 +70,15 @@ def loadConfig(configYaml):
             password = mailInfo["password"]
         if "to" in mailInfo:
             receivers = mailInfo["to"]
+
+    if "CRON" in res:
+        params = res["CRON"]
+        tempConf = params['conf']
+        s_key = list(tempConf.keys())
+        for k_s in s_key:
+            if str(tempConf[k_s]).strip() == '':
+                del tempConf[k_s]
+        params['conf'] = tempConf
 
     #print(mongodb_url)
     print(output_file)
@@ -175,6 +190,36 @@ def sendMail(file_path, date_str):
     except Exception as e:
         print("Error: 无法发送邮件")
 
+def doWork():
+
+    global mongodb_url, output_file
+
+    data = getData(mongodb_url)
+    print(data.head())
+
+    genReport(data, output_file)
+
+    cur_date = datetime.datetime.now()
+    print('cur_date:', cur_date.strftime('%Y_%m_%d'))
+
+    sendMail(output_file, cur_date.strftime("%Y年%m月%d日"))
+
+def doScheduleWork():
+    
+    print('params:', params)
+
+    scheduler = BlockingScheduler()
+    scheduler.add_job(doWork, params['type'], **params['conf'])
+
+    print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+
+    scheduler.shutdown()
+
 if __name__ == '__main__':
 
     if "CONFIG" in os.environ:
@@ -182,9 +227,7 @@ if __name__ == '__main__':
 
     loadConfig(config_file)
 
-    data = getData(mongodb_url)
-    print(data.head())
-
-    genReport(data, output_file)
-
-    sendMail(output_file, cur_date.strftime("%Y年%m月%d日"))
+    if len(sys.argv) > 1 and sys.argv[1] == 'direct':
+        doWork()
+    else:
+        doScheduleWork()

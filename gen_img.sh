@@ -7,6 +7,8 @@ if [ -n "$1" ]; then
     BUILD_FLAG=--no-cache
 fi
 
+docker build $BUILD_FLAG -t leochan007/reporter_base -f Dockerfile.base .
+
 echo 'BUILD_FLAG:'$BUILD_FLAG
 
 source module_def.sh

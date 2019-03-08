@@ -1,5 +1,4 @@
-MONGODB_URL: 
-  "mongodb://root:example@127.0.0.1:27017/admin?authSource=admin"
+MONGODB_URL: "mongodb://root:example@127.0.0.1:27017/admin?authSource=admin"
 
 OUTPUT_FILE: report.xlsx
 
@@ -18,7 +17,7 @@ MAIL:
 
 CRON:
   type:
-    cron
+    interval
   conf:
   #all
     timezone:
@@ -27,18 +26,14 @@ CRON:
       ""
     end_date:
       ""
-  #cron
-    year:
-      ""
-    month:
-      ""
-    day:
-      ""
-    day_of_week:
-      "4"
-    hour:
-      "18"
-    minute:
-      "30"
-    second:
+  #interval
+    weeks:
+      "1"
+    days:
+      "7"
+    hours:
+      "0"
+    minutes:
+      "0"
+    seconds:
       "0"
